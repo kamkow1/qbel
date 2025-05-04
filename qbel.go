@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 )
 
@@ -20,27 +22,59 @@ var (
 
 	// ContainerHostName : The name to be used as hostname in container
 	ContainerHostName = "container001"
+
+    Application = []string{}
 )
 
 func init() {
-    rootfs, ok := os.LookupEnv("QBEL_ROOTFS")
-    if ok {
-        ContainerRootfsPath = rootfs
+    script_dir, ok := os.LookupEnv("QBEL_SCRIPTS")
+    if !ok {
+        fmt.Println("QBEL_SCRIPTS not set")
+        return
     }
 
-    mkimage_script, ok := os.LookupEnv("QBEL_MKIMAGE")
-    if ok && mkimage_script != "" {
-        cmd := exec.Command(mkimage_script)
-        cmd.Dir = ContainerRootfsPath
-        cmd.Stdin = os.Stdin
-        cmd.Stdout = os.Stdout
-        cmd.Stderr = os.Stderr
-        if err := cmd.Run(); err != nil {
-            fmt.Println("ERROR", err)
+    cwd, _ := os.Getwd()
+    qbelfile_path := filepath.Join(cwd, "Qbelfile")
+    bytes, err := ioutil.ReadFile(qbelfile_path)
+    if err != nil {
+        return
+    }
+
+    qbelfile := string(bytes)
+
+    lines := strings.Split(qbelfile, "\n")
+    for _, line := range lines {
+        fields := strings.Fields(line)
+        if len(fields) == 0 {
+            continue
         }
-
-        os.Setenv("QBEL_MKIMAGE", "")
+        
+        if fields[0] == "CONTAINER" {
+            ContainerHostName = fields[1]
+            
+            rootPrePath, _ := filepath.Abs(fields[2])
+            ContainerRootfsPath = filepath.Join(rootPrePath, ContainerHostName + "-rootfs")
+            fmt.Println(ContainerRootfsPath)
+            os.MkdirAll(ContainerRootfsPath, 0755)
+        } else if fields[0] == "RUN" {
+            _, ok := os.LookupEnv("QBEL_SETUPDONE")
+            if ok {
+                continue
+            }
+            cmd := exec.Command(filepath.Join(script_dir, fields[1]), fields[2:]...)
+            cmd.Dir = ContainerRootfsPath
+            cmd.Stdin = os.Stdin
+            cmd.Stdout = os.Stdout
+            cmd.Stderr = os.Stderr
+            if err := cmd.Run(); err != nil {
+                fmt.Println("ERROR", err)
+            }
+        } else if fields[0] == "APP" {
+            Application = fields[1:]
+        }
     }
+
+    os.Setenv("QBEL_SETUPDONE", "Y")
 }
 
 func main() {
@@ -146,7 +180,7 @@ func spawner() {
 	prepareRootfs(ContainerRootfsPath)
 	setHostName(ContainerHostName)
 
-	cmd := exec.Command(os.Args[2], os.Args[3:]...)
+    cmd := exec.Command(Application[0], Application[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

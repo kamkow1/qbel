@@ -1,0 +1,3 @@
+CONTAINER   QBEL-Testing    .
+RUN         prepare_busybox
+APP         /bin/sh
