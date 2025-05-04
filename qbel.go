@@ -58,13 +58,16 @@ func init() {
             
             rootPrePath, _ := filepath.Abs(fields[2])
             ContainerRootfsPath = filepath.Join(rootPrePath, ContainerHostName + "-rootfs")
-            fmt.Println(ContainerRootfsPath)
             os.MkdirAll(ContainerRootfsPath, 0755)
         } else if fields[0] == "RUN" {
             _, ok := os.LookupEnv("QBEL_SETUPDONE")
             if ok {
                 continue
             }
+            if _, err := os.Stat(ContainerRootfsPath); !os.IsNotExist(err) {
+                continue
+            }
+
             cmd := exec.Command(filepath.Join(script_dir, fields[1]), fields[2:]...)
             cmd.Dir = ContainerRootfsPath
             cmd.Stdin = os.Stdin
