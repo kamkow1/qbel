@@ -1,11 +1,3 @@
-# DIRECTIVES:
-# 
-# CONTAINER     <container name> <path of container directory>
-#
-# RUN           <setup script>
-#
-# APP           <application>
-
-CONTAINER   QBEL-Testing    .
-RUN         prepare_busybox
-APP         /bin/sh
+CONTAINER QBEL-Alpine_Linux .
+RUN prepare_alpine_linux
+APP /bin/sh
