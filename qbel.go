@@ -64,7 +64,7 @@ func init() {
             if ok {
                 continue
             }
-            if _, err := os.Stat(ContainerRootfsPath); !os.IsNotExist(err) {
+            if _, err := os.Stat(filepath.Join(ContainerRootfsPath, ".SETUP")); err == nil {
                 continue
             }
 
@@ -82,6 +82,9 @@ func init() {
     }
 
     os.Setenv("QBEL_SETUPDONE", "Y")
+    if err := os.WriteFile(filepath.Join(ContainerRootfsPath, ".SETUP"), []byte("Y"), 0666); err != nil {
+        fmt.Println("ERROR", err)
+    }
 }
 
 func main() {
@@ -105,6 +108,14 @@ func mounts(newRoot string) {
 	procDict := filepath.Join(newRoot, "/proc")
 	_ = os.Mkdir(procDict, 0777)
 	must(syscall.Mount(newRoot, procDict, "proc", uintptr(0), ""))
+	
+    sysDict := filepath.Join(newRoot, "/sys")
+	_ = os.Mkdir(sysDict, 0777)
+	must(syscall.Mount(newRoot, sysDict, "sysfs", uintptr(0), ""))
+    
+    tmpDict := filepath.Join(newRoot, "/tmp")
+	_ = os.Mkdir(tmpDict, 0777)
+	must(syscall.Mount(newRoot, tmpDict, "tmpfs", uintptr(0), ""))
 }
 
 // Prepare root fielsystem for container.
@@ -156,7 +167,11 @@ func selfExec() {
 		Cloneflags: syscall.CLONE_NEWUTS |
 			syscall.CLONE_NEWPID |
 			syscall.CLONE_NEWNS |
-			syscall.CLONE_NEWUSER,
+			syscall.CLONE_NEWUSER |
+            syscall.CLONE_NEWIPC |
+            syscall.CLONE_NEWNET |
+            syscall.CLONE_NEWCGROUP |
+            syscall.CLONE_NEWTIME,
 		UidMappings: []syscall.SysProcIDMap{
 			{
 				ContainerID: 0,
