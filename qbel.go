@@ -48,6 +48,10 @@ func init() {
         if len(fields) == 0 {
             continue
         }
+
+        if fields[0][0] == '#' {
+            continue
+        }
         
         if fields[0] == "CONTAINER" {
             ContainerHostName = fields[1]
