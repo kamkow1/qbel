@@ -1,14 +1,19 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
+	"log"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
 )
+
+func logFatalfAndQuit(fmt string, args ...any) {
+	log.Fatalf(fmt, args...)
+	os.Exit(1)
+}
 
 var (
 	// ContainerRootfsPath : Path of the directory which to be used as root filesystem in container.
@@ -29,15 +34,14 @@ var (
 func init() {
     script_dir, ok := os.LookupEnv("QBEL_SCRIPTS")
     if !ok {
-        fmt.Println("QBEL_SCRIPTS not set")
-        return
+        logFatalfAndQuit("QBEL_SCRIPTS not set\n")
     }
 
     cwd, _ := os.Getwd()
     qbelfile_path := filepath.Join(cwd, "Qbelfile")
     bytes, err := ioutil.ReadFile(qbelfile_path)
     if err != nil {
-        return
+		logFatalfAndQuit("Could not read Qbelfile: %v\n", err)
     }
 
     qbelfile := string(bytes)
@@ -74,7 +78,7 @@ func init() {
             cmd.Stdout = os.Stdout
             cmd.Stderr = os.Stderr
             if err := cmd.Run(); err != nil {
-                fmt.Println("ERROR", err)
+				logFatalfAndQuit("Command %v failed: %v\n", cmd.Args, err)
             }
         } else if fields[0] == "APP" {
             Application = fields[1:]
@@ -83,7 +87,7 @@ func init() {
 
     os.Setenv("QBEL_SETUPDONE", "Y")
     if err := os.WriteFile(filepath.Join(ContainerRootfsPath, ".SETUP"), []byte("Y"), 0666); err != nil {
-        fmt.Println("ERROR", err)
+		logFatalfAndQuit("Could not write .SETUP: %v\n", err)
     }
 }
 
@@ -94,7 +98,7 @@ func main() {
 	case "spawner":
 		spawner()
 	default:
-		panic("Unknown command")
+		logFatalfAndQuit("Unknown command: %s\n", os.Args[1])
 	}
 }
 
@@ -192,8 +196,7 @@ func selfExec() {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		fmt.Println("ERROR", err)
-		os.Exit(1)
+		logFatalfAndQuit("Command %v failed: %v\n", cmd.Args, err)
 	}
 }
 
@@ -208,7 +211,7 @@ func spawner() {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		fmt.Println("ERROR", err)
+		logFatalfAndQuit("Command %v failed: %v\n", cmd.Args, err)
 		os.Exit(1)
 	}
 }
