@@ -16,17 +16,15 @@ func logFatalfAndQuit(fmt string, args ...any) {
 }
 
 var (
-	// ContainerRootfsPath : Path of the directory which to be used as root filesystem in container.
-	// You should have `rootfs` directory which contains a small linux file system.
-	// You can use BusyBox or a small Alpine linux image for that.
-	// Check https://wiki.alpinelinux.org/wiki/Installing_Alpine_Linux_in_a_chroot
-	ContainerRootfsPath = "./rootfs"
+	// ContainerRootfsPath is a path to the root of the filesystem (ie. `/`)
+	// that will be seen from the perspective of the container.
+	ContainerRootfsPath = ""
 
 	// OldRootPath : Path that old rootfilesystem to be moved in container.
 	OldRootPath = ".old_root"
 
 	// ContainerHostName : The name to be used as hostname in container
-	ContainerHostName = "container001"
+	ContainerHostName = ""
 
     Application = []string{}
 )
@@ -84,6 +82,18 @@ func init() {
             Application = fields[1:]
         }
     }
+
+	if ContainerHostName == "" {
+		logFatalfAndQuit("Container hostname is not set!\n")
+	}
+
+	if len(Application) == 0 {
+		logFatalfAndQuit("No application commandline provided\n")
+	}
+
+	if ContainerRootfsPath == "" {
+		logFatalfAndQuit("Container root fs is not set\n")
+	}
 
     os.Setenv("QBEL_SETUPDONE", "Y")
     if err := os.WriteFile(filepath.Join(ContainerRootfsPath, ".SETUP"), []byte("Y"), 0666); err != nil {
