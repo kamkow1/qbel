@@ -222,7 +222,6 @@ func spawner() {
 
 	if err := cmd.Run(); err != nil {
 		logFatalfAndQuit("Command %v failed: %v\n", cmd.Args, err)
-		os.Exit(1)
 	}
 }
 
